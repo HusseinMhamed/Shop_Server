@@ -5,8 +5,8 @@ import mongoose from "mongoose";
 import corsOptions from "./config/corsOptions.mjs";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import rootRouter from "./routes/root.mjs"
-import path from 'path'
+import rootRouter from "./routes/root.mjs";
+import path from "path";
 // import router1 from "./routes/authRoutes.mjs";
 import { fileURLToPath } from "url";
 dotenv.config();
@@ -22,22 +22,27 @@ app.use(cors(corsOptions));
 // app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
-let orgPath =fileURLToPath(import.meta.url)
-let dirPath = path.join(path.dirname(orgPath),'views','NotFound.html')
+let orgPath = fileURLToPath(import.meta.url);
+let dirPath = path.join(path.dirname(orgPath), "views", "NotFound.html");
 
-app.use('/',express.static(path.join( path.dirname( fileURLToPath(import.meta.url)),'public')))
-app.use("/", rootRouter )
+app.use(
+  "/",
+  express.static(
+    path.join(path.dirname(fileURLToPath(import.meta.url)), "public"),
+  ),
+);
+app.use("/", rootRouter);
 
-app.all(/.*/,(req,res)=>{
-  res.status(404)
-  if(req.accepts("html")){
+app.all(/.*/, (req, res) => {
+  res.status(404);
+  if (req.accepts("html")) {
     res.sendFile(dirPath);
-  }else if(req.accepts("json")){
-    res.send({message:"404 Not Found"});
-  }else{
+  } else if (req.accepts("json")) {
+    res.send({ message: "404 Not Found" });
+  } else {
     res.type("txt").send("404 Not Found");
   }
-})
+});
 
 mongoose.connection.once("open", () => {
   console.log("connected to database");
@@ -45,11 +50,8 @@ mongoose.connection.once("open", () => {
   app.listen(PORT, () => {
     console.log(`server is running on port ${PORT}`);
   });
-
 });
 
 mongoose.connection.on("error", () => {
   console.log("erre");
 });
-
-
