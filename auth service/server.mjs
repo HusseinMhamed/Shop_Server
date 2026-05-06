@@ -47,7 +47,7 @@ app.all(/.*/, (req, res) => {
 mongoose.connection.once("open", () => {
   console.log("connected to database");
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`server is running on port ${PORT}`);
   });
 });

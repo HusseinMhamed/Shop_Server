@@ -131,8 +131,17 @@ export const createProduct = async (req, res) => {
 
 export const getAllProducts = async (req, res) => {
   try {
-    // نستخدم .find() لجلب كل البيانات و .sort() لترتيبها حسب تاريخ الإضافة
-    const products = await Product.find().sort({ createdAt: -1 });
+    const { type, category, model } = req.query;
+    // console.log("Received query parameters:", { type, category, model });
+    let products;
+    if (model) products = await Product.find({ model }).sort({ createdAt: -1 });
+    else if (category)
+      products = await Product.find({ category }).sort({ createdAt: -1 });
+    else if (type)
+      products = await Product.find({ type }).sort({ createdAt: -1 });
+    else
+      // نستخدم .find() لجلب كل البيانات و .sort() لترتيبها حسب تاريخ الإضافة
+      products = await Product.find().sort({ createdAt: -1 });
 
     res.status(200).json({
       success: true,
@@ -197,6 +206,37 @@ export const updateProduct = async (req, res) => {
       success: false,
       message: error.message || "خطأ في الخادم",
       error,
+    });
+  }
+};
+
+export const productDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // التحقق من صحة المعرف (اختياري ولكن ينصح به)
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "معرف المنتج غير صالح" });
+    }
+
+    const product = await Product.findById(id)
+      .populate("type", "name") // جلب حقل الاسم فقط من موديل الأنواع
+      .populate("category", "name") // جلب حقل الاسم فقط من موديل الفئات
+      .populate("model", "name"); // جلب حقل الاسم فقط من موديل الموديلات
+
+    if (!product) {
+      return res.status(404).json({ message: "هذا المنتج غير موجود" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: product,
+    });
+  } catch (error) {
+    console.error("Error fetching product details:", error);
+    res.status(500).json({
+      success: false,
+      message: "حدث خطأ في الخادم أثناء جلب تفاصيل المنتج",
     });
   }
 };

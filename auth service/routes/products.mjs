@@ -3,6 +3,7 @@ import upload from "../middleware/multer.mjs"; // استخدام الإعداد�
 import {
   createProduct,
   getAllProducts,
+  productDetails,
   updateProduct,
 } from "../controllers/products.mjs";
 
@@ -15,5 +16,7 @@ router.get("/all", getAllProducts);
 
 // لتعديل منتج موجود (الذي كنا نعمل عليه)
 router.put("/update/:id", upload.array("newImages"), updateProduct);
+
+router.route("/:id").get(productDetails);
 
 export default router;

@@ -1,3 +1,4 @@
+import Product from "../models/Product.mjs";
 import { Type, Category, Model } from "../models/ProductsMetaDeta.mjs";
 // --- إظهار البيانات ---
 
@@ -138,5 +139,150 @@ export const addModel = async (req, res) => {
       status: "fail",
       message: error.message || "فشل إضافة الموديل حاول مجدداً لاحقاً",
     });
+  }
+};
+
+export const deleteType = async (req, res) => {
+  try {
+    const typeId = req.params.id;
+
+    // 1. جلب جميع الفئات التابعة لهذا النوع قبل حذفها
+    // نحتاج معرفات الفئات (IDs) لكي نعرف ما هي الموديلات التي سنحذفها
+    const relatedCategories = await Category.find({
+      parentType: typeId,
+    }).select("_id");
+    const categoryIds = relatedCategories.map((cat) => cat._id);
+
+    // 2. حذف جميع الموديلات التي تنتمي لأي فئة من الفئات التي وجدناها
+    if (categoryIds.length > 0) {
+      await Model.deleteMany({ parentCategory: { $in: categoryIds } });
+    }
+
+    // 3. الآن نحذف جميع الفئات التابعة للنوع
+    await Category.deleteMany({ parentType: typeId });
+
+    await Product.deleteMany({ type: typeId });
+
+    // 4. أخيراً، نحذف النوع نفسه
+    const deletedType = await Type.findByIdAndDelete(typeId);
+
+    if (!deletedType) {
+      return res.status(404).json({ message: "النوع غير موجود" });
+    }
+
+    res.json({
+      message: "تم حذف النوع وكل الفئات والموديلات و المنتجات التابعة له بنجاح",
+      details: {
+        categoriesDeleted: categoryIds.length,
+        typeId: typeId,
+      },
+    });
+  } catch (error) {
+    console.log("Cascade Delete Error:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "حدث خطأ أثناء الحذف المتسلسل" });
+  }
+};
+
+export const deleteCategory = async (req, res) => {
+  try {
+    const cateId = req.params.id;
+
+    await Model.deleteMany({ parentCategory: cateId });
+
+    await Product.deleteMany({ category: cateId });
+
+    // 4. أخيراً، نحذف الفئة نفسه
+    const deletedCateg = await Category.findByIdAndDelete(cateId);
+
+    if (!deletedCateg) {
+      return res.status(404).json({ message: "الفئة غير موجود" });
+    }
+
+    res.json({
+      message: "تم حذف الفئة وكل الموديلات و المنتجات التابعة له بنجاح",
+    });
+  } catch (error) {
+    console.log("Cascade Delete Error:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "حدث خطأ أثناء الحذف المتسلسل" });
+  }
+};
+export const deleteModel = async (req, res) => {
+  try {
+    const modelId = req.params.id;
+
+    await Product.deleteMany({ model: modelId });
+
+    // 4. أخيراً، نحذف الفئة نفسه
+    const deletedModel = await Model.findByIdAndDelete(modelId);
+
+    if (!deletedModel) {
+      return res.status(404).json({ message: "الموديل غير موجود" });
+    }
+
+    res.json({
+      message: "تم حذف الموديل وكل المنتجات التابعة له بنجاح",
+    });
+  } catch (error) {
+    console.log("Cascade Delete Error:", error);
+    res
+      .status(500)
+      .json({ message: error.message || "حدث خطأ أثناء الحذف المتسلسل" });
+  }
+};
+
+export const patchTypes = async (req, res) => {
+  try {
+    const updated = await Type.findByIdAndUpdate(
+      req.params.id,
+      { name: req.body.name },
+      { new: true, runValidators: true },
+    );
+
+    res.json({
+      data: updated,
+      state: "success",
+      message: "تم تعديل اسم النوع بنجاح",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const patchCategory = async (req, res) => {
+  try {
+    const updated = await Category.findByIdAndUpdate(
+      req.params.id,
+      { name: req.body.name },
+      { new: true, runValidators: true },
+    );
+    res.json({
+      data: updated,
+      state: "success",
+      message: "تم تعديل اسم الفئة بنجاح",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const patchModel = async (req, res) => {
+  try {
+    const updated = await Model.findByIdAndUpdate(
+      req.params.id,
+      { name: req.body.name },
+      { new: true, runValidators: true },
+    );
+
+    res.json({
+      data: updated,
+      state: "success",
+      message: "تم تعديل اسم الموديل بنجاح",
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

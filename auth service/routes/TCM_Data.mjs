@@ -7,6 +7,12 @@ import {
   getCategoriesByType,
   getFullStructure,
   getModelsByCategory,
+  deleteType,
+  deleteModel,
+  patchTypes,
+  patchCategory,
+  deleteCategory,
+  patchModel,
 } from "../controllers/ProductsMetaDeta.mjs";
 const router = Router();
 
@@ -17,6 +23,14 @@ router.route("/models").post(addModel);
 router.route("/types").get(getType);
 router.route("/categories/:typeId").get(getCategoriesByType);
 router.route("/models/:categoryId").get(getModelsByCategory);
+
+router.route("/types/:id").delete(deleteType);
+router.route("/categories/:id").delete(deleteCategory);
+router.route("/models/:id").delete(deleteModel);
+
+router.route("/types/:id").patch(patchTypes);
+router.route("/categories/:id").patch(patchCategory);
+router.route("/models/:id").patch(patchModel);
 
 router.route("/structure").get(getFullStructure);
 
