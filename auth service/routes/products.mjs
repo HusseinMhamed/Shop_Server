@@ -2,9 +2,10 @@ import { Router } from "express";
 import upload from "../middleware/multer.mjs"; // استخدام الإعدادات الجاهزة التي شرحناها
 import {
   createProduct,
+  deleteProduct,
   getAllProducts,
   productDetails,
-  updateProduct,
+  updateProductWithImages,
 } from "../controllers/products.mjs";
 
 const router = Router();
@@ -15,7 +16,10 @@ router.post("/create", upload.array("images", 6), createProduct);
 router.get("/all", getAllProducts);
 
 // لتعديل منتج موجود (الذي كنا نعمل عليه)
-router.put("/update/:id", upload.array("newImages"), updateProduct);
+
+router.put("/:id", updateProductWithImages);
+
+router.delete("/:id", deleteProduct);
 
 router.route("/:id").get(productDetails);
 

@@ -19,6 +19,8 @@ connectDB();
 // console.log(path.join(fileURLToPath(import.meta.url),'public'))
 // console.log(import.meta.url)
 app.use(cors(corsOptions));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ limit: "10mb", extended: true }));
 // app.use(cors());
 app.use(cookieParser());
 app.use(express.json());

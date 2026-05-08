@@ -134,14 +134,31 @@ export const getAllProducts = async (req, res) => {
     const { type, category, model } = req.query;
     // console.log("Received query parameters:", { type, category, model });
     let products;
-    if (model) products = await Product.find({ model }).sort({ createdAt: -1 });
+    if (model)
+      products = await Product.find({ model }).sort({
+        isFeatured: -1,
+        priority: -1,
+        createdAt: -1,
+      });
     else if (category)
-      products = await Product.find({ category }).sort({ createdAt: -1 });
+      products = await Product.find({ category }).sort({
+        isFeatured: -1,
+        priority: -1,
+        createdAt: -1,
+      });
     else if (type)
-      products = await Product.find({ type }).sort({ createdAt: -1 });
+      products = await Product.find({ type }).sort({
+        isFeatured: -1,
+        priority: -1,
+        createdAt: -1,
+      });
     else
       // نستخدم .find() لجلب كل البيانات و .sort() لترتيبها حسب تاريخ الإضافة
-      products = await Product.find().sort({ createdAt: -1 });
+      products = await Product.find().sort({
+        isFeatured: -1,
+        priority: -1,
+        createdAt: -1,
+      });
 
     res.status(200).json({
       success: true,
@@ -157,55 +174,127 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
-export const updateProduct = async (req, res) => {
+export const updateProductWithImages = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, price, description, existingImages } = req.body;
+    const { images, ...otherData } = req.body; // images هي المصفوفة القادمة من الفرونت إند
 
-    // 1. معالجة الصور الجديدة إذا وُجدت
-    let uploadedImagesUrls = [];
-    if (req.files && req.files.length > 0) {
-      const files = req.files;
-
-      const uploadPromises = files.map((file) =>
-        cloudinary.uploader.upload(file.path, { folder: "shop/products" }),
-      );
-
-      const results = await Promise.all(uploadPromises);
-      uploadedImagesUrls = results.map((result) => result.secure_url);
+    if (images && (images.length > 6 || images.length === 0)) {
+      return res.status(400).json({
+        success: false,
+        message: "عذراً، الحد الأقصى المسموح به هو 6 صور فقط",
+      });
     }
 
-    // 2. دمج الصور القديمة (المُرسلة من الفرونت) مع الروابط الجديدة
-    // ملاحظة: existingImages تأتي كـ string أو Array حسب عدد الصور
-    const finalImages = [
-      ...(Array.isArray(existingImages)
-        ? existingImages
-        : [existingImages].filter(Boolean)),
-      ...uploadedImagesUrls,
-    ];
+    // 1. جلب المنتج الحالي من القاعدة لمعرفة الصور القديمة
+    const oldProduct = await Product.findById(id);
+    if (!oldProduct)
+      return res.status(404).json({ message: "المنتج غير موجود" });
 
-    // 3. تحديث البيانات في MongoDB
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      {
-        name,
-        price,
-        description,
-        images: finalImages,
-      },
-      { new: true }, // لإرجاع البيانات بعد التعديل
+    // 2. تحديد الصور التي تم حذفها من الفرونت إند لمسحها من Cloudinary
+    // أي صورة كانت موجودة في oldProduct.images وليست موجودة في images القادمة
+    const imagesToDelete = oldProduct.images.filter(
+      (imgUrl) => !images.includes(imgUrl),
     );
+
+    for (const url of imagesToDelete) {
+      try {
+        // استخراج الـ public_id من الرابط
+        const publicId = url.split("/").pop().split(".")[0];
+        await cloudinary.uploader.destroy(`store/products/${publicId}`);
+      } catch (err) {
+        console.error("فشل حذف صورة من Cloudinary:", err);
+      }
+    }
+
+    // 3. معالجة الصور القادمة (الرفع أو الإبقاء)
+    const finalImages = [];
+    for (const img of images) {
+      if (img.startsWith("data:image")) {
+        // هذه صورة جديدة (Base64) تحتاج رفع
+        const uploadRes = await cloudinary.uploader.upload(img, {
+          folder: "store/products",
+          transformation: [
+            { width: 800, height: 800, crop: "limit" }, // تصغير الصورة إذا كانت أكبر من 800px مع الحفاظ على الأبعاد
+            { quality: "auto" }, // ضغط الصورة ذكياً لتقليل الحجم دون التأثير على الجودة
+            { fetch_format: "auto" }, // تحويلها لأفضل صيغة يدعمها المتصفح مثل WebP
+          ],
+        });
+        finalImages.push(uploadRes.secure_url);
+      } else {
+        // هذا رابط قديم، نحتفظ به كما هو
+        finalImages.push(img);
+      }
+    }
+    // -------------------------------------------------------
+
+    // حساب السعر بعد الخصم قبل التحديث لضمان دقة البيانات
+    let updatePayload = { ...otherData, images: finalImages };
+
+    if (
+      updatePayload.price !== undefined ||
+      updatePayload.discountPercentage !== undefined
+    ) {
+      const price = updatePayload.price ?? oldProduct.price;
+      const discount =
+        updatePayload.discountPercentage ?? oldProduct.discountPercentage;
+      updatePayload.priceAfterDiscount = price - price * (discount / 100);
+    }
+    // 4. تحديث المنتج في قاعدة البيانات
+    const updatedProduct = await Product.findByIdAndUpdate(id, updatePayload, {
+      returnDocument: "after",
+      runValidators: true,
+    }).populate("type category model");
 
     res.status(200).json({
       success: true,
-      message: "تم تحديث المنتج بنجاح",
       data: updatedProduct,
     });
   } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "حدث خطأ أثناء التحديث" });
+  }
+};
+
+export const deleteProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // 1. البحث عن المنتج أولاً لجلب روابط الصور
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "المنتج غير موجود",
+      });
+    }
+
+    // 2. حذف الصور من Cloudinary (اختياري ولكن ينصح به)
+    // نفترض أنك تخزن الـ public_id أو روابط يمكن استخراج الـ ID منها
+    if (product.images && product.images.length > 0) {
+      const deletePromises = product.images.map((imgUrl) => {
+        // استخراج الـ public_id من الرابط إذا لم تكن تخزنه بشكل منفصل
+        // غالباً ما يكون الجزء الأخير من الرابط قبل الامتداد
+        const publicId = imgUrl.split("/").pop().split(".")[0];
+        return cloudinary.uploader.destroy(`store/products/${publicId}`);
+      });
+      await Promise.all(deletePromises);
+    }
+
+    // 3. حذف المنتج من قاعدة البيانات
+    await Product.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "تم حذف المنتج وجميع الصور التابعة له بنجاح",
+    });
+  } catch (error) {
+    console.error("Delete Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "خطأ في الخادم",
-      error,
+      message: "حدث خطأ أثناء محاولة الحذف",
+      error: error.message,
     });
   }
 };
