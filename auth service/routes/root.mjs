@@ -6,6 +6,7 @@ import auth from "./authRoutes.mjs";
 import usersrouter from "./userRoutes.mjs";
 import productsRouter from "./products.mjs";
 import TCMRouter from "./TCM_Data.mjs";
+import ContactRouter from "./Contact.mjs";
 let orgPath = fileURLToPath(import.meta.url);
 let dirPath = path.join(path.dirname(orgPath), "..", "views", "index.html");
 
@@ -22,5 +23,7 @@ router.get("/", (req, res) => {
 router.use("/products", productsRouter);
 
 router.use("/productsmetadata", TCMRouter);
+
+router.use("/contact", ContactRouter);
 
 export default router;

@@ -7,13 +7,16 @@ import {
   productDetails,
   updateProductWithImages,
 } from "../controllers/products.mjs";
+import isAdmin from "../middleware/isAdmin.mjs";
 
 const router = Router();
 
-// لإنشاء منتج جديد
-router.post("/create", upload.array("images", 6), createProduct);
-
 router.get("/all", getAllProducts);
+// لإنشاء منتج جديد
+
+router.use(isAdmin);
+
+router.post("/create", upload.array("images", 6), createProduct);
 
 // لتعديل منتج موجود (الذي كنا نعمل عليه)
 
