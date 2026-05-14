@@ -7,12 +7,18 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import rootRouter from "./routes/root.mjs";
 import path from "path";
+import fs from "fs";
 // import router1 from "./routes/authRoutes.mjs";
 import { fileURLToPath } from "url";
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("تم إنشاء مجلد uploads بنجاح");
+}
 
 connectDB();
 // console.log(path.join( path.dirname( fileURLToPath(import.meta.url)),'public'))
