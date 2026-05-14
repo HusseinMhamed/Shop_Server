@@ -15,7 +15,7 @@ const contactFieldSchema = new Schema({
 
 const websiteSettingsSchema = new Schema({
   // مصفوفة تحتوي على الحقول بترتيبها الذي حدده المستخدم
-  contacts: [contactFieldSchema],
+  contacts: { type: [contactFieldSchema], default: [] },
   updatedAt: { type: Date, default: Date.now },
 });
 

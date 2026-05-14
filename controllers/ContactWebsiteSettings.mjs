@@ -4,6 +4,7 @@
 import ContactWebsiteSettings from "../models/ContactWebsiteSettings.mjs";
 // 1. جلب بيانات التواصل
 export const getConacts = async (req, res) => {
+  console.log("contacts");
   try {
     // نفترض وجود مستند واحد فقط لإعدادات الموقع
     let settings = await ContactWebsiteSettings.findOne();
@@ -23,8 +24,12 @@ export const getConacts = async (req, res) => {
 export const updateConacts = async (req, res) => {
   try {
     const { contacts } = req.body; // المصفوفة القادمة من React
+
     // التحديث أو الإنشاء (Upsert)
     let settings = await ContactWebsiteSettings.findOne();
+    if (!settings) {
+      settings = new ContactWebsiteSettings();
+    }
     if (contacts && contacts.length > 0) {
       settings.contacts = contacts;
       await settings.save();
@@ -41,6 +46,7 @@ export const updateConacts = async (req, res) => {
       state: "success",
     });
   } catch (err) {
+    console.log(err.message);
     res
       .status(400)
       .json({ message: "خطأ في حفظ البيانات", error: err.message });
