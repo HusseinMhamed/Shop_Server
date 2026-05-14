@@ -77,11 +77,12 @@ const login = async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "7d" },
     );
+    // console.log(refreshToken);
     res.cookie("jwt", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      maxAge: 60 * 60 * 1000 * 24 * 7,
+      httpOnly: true, // أمان: يمنع الوصول للكوكي عبر JavaScript
+      secure: false, // هام جداً: اجعلها false طالما أنك تعمل على localhost (HTTP)
+      sameSite: "Lax", // تسمح بإرسال الكوكي في طلبات التنقل العادية (مثل الـ Refresh)
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام
     });
     res.json({
       accessToken,
@@ -97,6 +98,7 @@ const login = async (req, res) => {
 
 const refresh = (req, res) => {
   const cookies = req.cookies;
+  // console.log("cookies", cookies);
   if (!cookies?.jwt) {
     return res.status(401).json({ message: "Unauthorized" });
   }

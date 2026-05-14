@@ -15,6 +15,7 @@ import {
   patchModel,
 } from "../controllers/ProductsMetaDeta.mjs";
 import isAdmin from "../middleware/isAdmin.mjs";
+import verifyJWT from "../middleware/verifyJWT.mjs";
 const router = Router();
 
 router.route("/types").get(getType);
@@ -23,6 +24,7 @@ router.route("/models/:categoryId").get(getModelsByCategory);
 
 router.route("/structure").get(getFullStructure);
 
+router.use(verifyJWT);
 router.use(isAdmin);
 
 router.route("/types").post(addType);

@@ -2,7 +2,7 @@ import User from "../models/User.mjs";
 
 const isAdmin = async (req, res, next) => {
   try {
-    console.log(req.user);
+    // console.log(req.user);
     const currentUser = await User.findById(req.user).exec();
 
     if (!currentUser || currentUser.role !== "admin") {

@@ -8,12 +8,15 @@ import {
   updateProductWithImages,
 } from "../controllers/products.mjs";
 import isAdmin from "../middleware/isAdmin.mjs";
+import verifyJWT from "../middleware/verifyJWT.mjs";
 
 const router = Router();
 
 router.get("/all", getAllProducts);
-// لإنشاء منتج جديد
 
+router.route("/:id").get(productDetails);
+// لإنشاء منتج جديد
+router.use(verifyJWT);
 router.use(isAdmin);
 
 router.post("/create", upload.array("images", 6), createProduct);
@@ -23,7 +26,5 @@ router.post("/create", upload.array("images", 6), createProduct);
 router.put("/:id", updateProductWithImages);
 
 router.delete("/:id", deleteProduct);
-
-router.route("/:id").get(productDetails);
 
 export default router;
