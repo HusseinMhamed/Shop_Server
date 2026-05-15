@@ -25,6 +25,16 @@ connectDB();
 // console.log(path.join(fileURLToPath(import.meta.url),'public'))
 // console.log(import.meta.url)
 app.use(cors(corsOptions));
+// في ملف السيرفر الرئيسي
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+  );
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE");
+  next();
+});
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 // app.use(cors());

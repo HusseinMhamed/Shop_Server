@@ -4,7 +4,7 @@
 import ContactWebsiteSettings from "../models/ContactWebsiteSettings.mjs";
 // 1. جلب بيانات التواصل
 export const getConacts = async (req, res) => {
-  console.log("contacts");
+  // console.log("contacts");
   try {
     // نفترض وجود مستند واحد فقط لإعدادات الموقع
     let settings = await ContactWebsiteSettings.findOne();
