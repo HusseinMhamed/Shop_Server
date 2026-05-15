@@ -41,6 +41,14 @@ app.use(
 );
 app.use("/", rootRouter);
 
+app.get("/ping", (req, res) => {
+  const currentTime = new Date().toLocaleString("ar-EG", {
+    timeZone: "Africa/Cairo",
+  });
+  console.log(`Server Current Time Is : ${currentTime}`);
+  res.send("I am alive!");
+});
+
 app.all(/.*/, (req, res) => {
   res.status(404);
   if (req.accepts("html")) {
