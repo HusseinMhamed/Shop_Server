@@ -33,12 +33,10 @@ export const updateConacts = async (req, res) => {
     if (contacts && contacts.length > 0) {
       settings.contacts = contacts;
       await settings.save();
-    } else
-      return res.status(400).json({
-        message: "قم بإرسال بيانات صحيحة",
-        contacts: settings.contacts,
-        state: "faild",
-      });
+    } else {
+      settings.contacts = [];
+      await settings.save();
+    }
 
     res.status(200).json({
       message: "تم حفظ البيانات بنجاح",
