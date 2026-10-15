@@ -2,6 +2,16 @@ import User from "../models/User.mjs";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 
+const isProduction = process.env.NODE_ENV === "production";
+
+// إعدادات كوكي الـ Refresh Token موحّدة لكل من register / login / logout
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "None" : "Lax",
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام
+};
+
 const register = async (req, res) => {
   try {
     const { first_name, last_name, email, password } = req.body;
@@ -33,12 +43,7 @@ const register = async (req, res) => {
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "7d" },
     );
-    res.cookie("jwt", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    });
+    res.cookie("jwt", refreshToken, refreshCookieOptions);
     res.json({
       accessToken,
       email: user.email,
@@ -47,6 +52,7 @@ const register = async (req, res) => {
       role: user.role,
     });
   } catch (err) {
+    console.log(err.message)
     res.status(500).json({ message: "internal server error" });
   }
 };
@@ -78,12 +84,7 @@ const login = async (req, res) => {
       { expiresIn: "7d" },
     );
     // console.log(refreshToken);
-    res.cookie("jwt", refreshToken, {
-      httpOnly: true, // أمان: يمنع الوصول للكوكي عبر JavaScript
-      secure: false, // هام جداً: اجعلها false طالما أنك تعمل على localhost (HTTP)
-      sameSite: "Lax", // تسمح بإرسال الكوكي في طلبات التنقل العادية (مثل الـ Refresh)
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام
-    });
+    res.cookie("jwt", refreshToken, refreshCookieOptions);
     res.json({
       accessToken,
       email: foundUser.email,
@@ -133,8 +134,8 @@ const logout = (req, res) => {
   }
   res.clearCookie("jwt", {
     httpOnly: true,
-    secure: true,
-    sameSite: "None",
+    secure: isProduction,
+    sameSite: isProduction ? "None" : "Lax",
   });
   res.json({ message: "logged out" });
 };
