@@ -1,10 +1,11 @@
-export const errorHandeler= (func)=>{
-    return async(req, res,next)=>{
-        try{
-            await func(req,res,next);
-
-        }catch(err){
-            next(err)
-        }
+export const asyncErrorHandeler = (func) => {
+  return async (req, res, next) => {
+    try {
+      await func(req, res, next);
+    } catch (err) {
+      next(err);
     }
-}
+  };
+};
+
+export default asyncErrorHandeler;

@@ -9,22 +9,27 @@ import {
 } from "../controllers/products.mjs";
 import isAdmin from "../middleware/isAdmin.mjs";
 import verifyJWT from "../middleware/verifyJWT.mjs";
+import { asyncErrorHandeler } from "../middleware/asyncErrorHandeler.js";
 
 const router = Router();
 
-router.get("/all", getAllProducts);
+router.get("/all", asyncErrorHandeler(getAllProducts));
 
-router.route("/:id").get(productDetails);
+router.route("/:id").get(asyncErrorHandeler(productDetails));
 // لإنشاء منتج جديد
 router.use(verifyJWT);
 router.use(isAdmin);
 
-router.post("/create", upload.array("images", 6), createProduct);
+router.post(
+  "/create",
+  upload.array("images", 6),
+  asyncErrorHandeler(createProduct),
+);
 
 // لتعديل منتج موجود (الذي كنا نعمل عليه)
 
-router.put("/:id", updateProductWithImages);
+router.put("/:id", asyncErrorHandeler(updateProductWithImages));
 
-router.delete("/:id", deleteProduct);
+router.delete("/:id", asyncErrorHandeler(deleteProduct));
 
 export default router;

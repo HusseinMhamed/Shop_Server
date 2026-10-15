@@ -1,6 +1,7 @@
 import User from "../models/User.mjs";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { AppError } from "../utils/AppError.js";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -12,119 +13,95 @@ const refreshCookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 أيام
 };
 
+const createTokens = (id) => {
+  const accessToken = jwt.sign(
+    { UserInfo: { id } },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "15m" },
+  );
+  const refreshToken = jwt.sign(
+    { UserInfo: { id } },
+    process.env.REFRESH_TOKEN_SECRET,
+    { expiresIn: "7d" },
+  );
+  return { accessToken, refreshToken };
+};
+
 const register = async (req, res) => {
-  try {
-    const { first_name, last_name, email, password } = req.body;
-    if (!first_name || !last_name || !email || !password) {
-      return res.status(400).json({ message: "please fill all fields" });
-    }
-    const foundUser = await User.findOne({ email: email }).exec();
-    if (foundUser) {
-      return res.status(401).json({ message: "User already exist" });
-    }
-    const hashedpassword = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      first_name,
-      last_name,
-      email,
-      password: hashedpassword,
-    });
-    const accessToken = jwt.sign(
-      {
-        UserInfo: { id: user._id },
-      },
-      process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "15m" },
-    );
-    const refreshToken = jwt.sign(
-      {
-        UserInfo: { id: user._id },
-      },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" },
-    );
-    res.cookie("jwt", refreshToken, refreshCookieOptions);
-    res.json({
-      accessToken,
-      email: user.email,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      role: user.role,
-    });
-  } catch (err) {
-    console.log(err.message)
-    res.status(500).json({ message: "internal server error" });
+  const { first_name, last_name, email, password } = req.body;
+  if (!first_name || !last_name || !email || !password) {
+    throw new AppError("please fill all fields", 400);
   }
+  const foundUser = await User.findOne({ email: email }).exec();
+  if (foundUser) {
+    throw new AppError("User already exist", 401);
+  }
+  const hashedpassword = await bcrypt.hash(password, 10);
+  const user = await User.create({
+    first_name,
+    last_name,
+    email,
+    password: hashedpassword,
+  });
+  const { accessToken, refreshToken } = createTokens(user._id);
+  res.cookie("jwt", refreshToken, refreshCookieOptions);
+  res.json({
+    accessToken,
+    email: user.email,
+    first_name: user.first_name,
+    last_name: user.last_name,
+    role: user.role,
+  });
 };
 
 const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "please fill all feilds" });
-    }
-    const foundUser = await User.findOne({ email: email }).exec();
-    if (!foundUser) {
-      return res.status(401).json({ message: "incorrect email" });
-    }
-    const matched = await bcrypt.compare(password, foundUser.password);
-    if (!matched) {
-      return res.status(401).json({ message: "incorrect password" });
-    }
-    const accessToken = jwt.sign(
-      { UserInfo: { id: foundUser._id } },
-      process.env.ACCESS_TOKEN_SECRET,
-      {
-        expiresIn: "15m",
-      },
-    );
-    const refreshToken = jwt.sign(
-      { UserInfo: { id: foundUser._id } },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "7d" },
-    );
-    // console.log(refreshToken);
-    res.cookie("jwt", refreshToken, refreshCookieOptions);
-    res.json({
-      accessToken,
-      email: foundUser.email,
-      first_name: foundUser.first_name,
-      last_name: foundUser.last_name,
-      role: foundUser.role,
-    });
-  } catch (err) {
-    res.status(500).json({ message: "internal server error" });
+  const { email, password } = req.body;
+  if (!email || !password) {
+    throw new AppError("please fill all feilds", 400);
   }
+  const foundUser = await User.findOne({ email: email }).exec();
+  if (!foundUser) {
+    throw new AppError("incorrect email", 401);
+  }
+  const matched = await bcrypt.compare(password, foundUser.password);
+  if (!matched) {
+    throw new AppError("incorrect password", 401);
+  }
+  const { accessToken, refreshToken } = createTokens(foundUser._id);
+  res.cookie("jwt", refreshToken, refreshCookieOptions);
+  res.json({
+    accessToken,
+    email: foundUser.email,
+    first_name: foundUser.first_name,
+    last_name: foundUser.last_name,
+    role: foundUser.role,
+  });
 };
 
-const refresh = (req, res) => {
+const verifyRefreshToken = (token) =>
+  new Promise((resolve, reject) => {
+    jwt.verify(token, process.env.REFRESH_TOKEN_SECRET, (err, decoded) => {
+      if (err) reject(new AppError("forbidden", 403));
+      else resolve(decoded);
+    });
+  });
+
+const refresh = async (req, res) => {
   const cookies = req.cookies;
-
-  console.log("cookies", cookies);
   if (!cookies?.jwt) {
-    return res.status(401).json({ message: "Unauthorized" });
+    throw new AppError("Unauthorized", 401);
   }
-  const refreshToken = cookies.jwt;
-  jwt.verify(
-    refreshToken,
-    process.env.REFRESH_TOKEN_SECRET,
-    async (err, decoded) => {
-      if (err) {
-        return res.status(403).json({ message: "forbidden" });
-      }
-      const foundUser = await User.findById(decoded.UserInfo.id).exec();
-      if (!foundUser) {
-        return res.status(404).json({ message: "not found" });
-      }
-      const accessToken = jwt.sign(
-        { UserInfo: { id: foundUser._id } },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "15m" },
-      );
-
-      res.status(200).json({ accessToken });
-    },
+  const decoded = await verifyRefreshToken(cookies.jwt);
+  const foundUser = await User.findById(decoded.UserInfo.id).exec();
+  if (!foundUser) {
+    throw new AppError("not found", 404);
+  }
+  const accessToken = jwt.sign(
+    { UserInfo: { id: foundUser._id } },
+    process.env.ACCESS_TOKEN_SECRET,
+    { expiresIn: "15m" },
   );
+  res.status(200).json({ accessToken });
 };
 
 const logout = (req, res) => {
